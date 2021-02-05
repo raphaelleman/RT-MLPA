@@ -21,7 +21,7 @@ Statistical analysis of fusion count from RT-MLPA sequencing
 Donwload scrpits
 
 ```bash
-git clone
+git clone https://github.com/raphaelleman/RT-MLPA_analysis.git
 cd ./RT-MLPA_analysis
 ```
 
