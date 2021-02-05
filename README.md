@@ -77,4 +77,4 @@ Rscript ./CrossValAnalyzer.r -I /path/to/mySamples/ -O /path/to/myOutput.txt
 
 ## License <a id="7"></a>
 
-This project is licensed under the MIT License - see the [LICENSE](https://github.com/raphaelleman/SpliceLauncher/blob/master/LICENSE "tittle") file for details
+This project is licensed under the MIT License - see the [LICENSE](https://github.com/raphaelleman/RT-MLPA_analysis/blob/master/LICENSE "tittle") file for details
