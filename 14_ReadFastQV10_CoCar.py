@@ -4,22 +4,40 @@ import gzip
 import csv
 import numpy as np
 import pandas as pd
+import argparse
 
-### Procedure generale : recupere les reads d'un FastQ (independant du type d'analyse)
+my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
-### Nom du run
-#run = '2021_04_14_CoCar1'
-#run = '2021_06_04_CoCar2'
-#run = '2021_09_15_CoCar3'
-#run = '2021_09_27_CoCar4'
-run = 'Cocar_Test'
+my_parser.add_argument('-R','--runName',type=str,
+                       help='Name of run')
 
-rep = 'C:\CoCar\Reads_CoCar'+ os.path.sep + run
-os.mkdir(rep)
+my_parser.add_argument('-O','--output',type=str,
+                       help='/path/to/output')
+
+my_parser.add_argument('-I','--input',type=str,
+                       help='/path/to/fastq files')
+
+my_parser.add_argument('-v',
+                       '--verbose',
+                       action='store_true',
+                       help='an optional argument')
+
+args = my_parser.parse_args()
+
+run = args.runName
+
+rep = os.path.realpath(args.output)
 
 ### Listes FastQ et Echantillons
 ListFastQ = []
-repFastQ = 'C:\CoCar\FastQ' + os.path.sep + run
+repFastQ = os.path.realpath(args.input)
+
+rep = rep+ os.path.sep + run
+if not os.path.exists(rep):
+    os.mkdir(rep)
+
+### Listes FastQ et Echantillons
+ListFastQ = []
 for file in os.listdir(repFastQ):
     ListFastQ.append(file)
 
