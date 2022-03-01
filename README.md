@@ -1,5 +1,20 @@
 # RT-MLPA scripts
 
+## Python packages
+
+- os
+- shutil
+- csv
+- math
+- numpy
+- pandas
+- time
+- statistics
+- argparse
+- matplotlib
+- sklearn
+- gzip
+
 ## 14_ReadFastQV10_CoCar.py
 
 Extract sequence from Fastq FastQ Filtres
