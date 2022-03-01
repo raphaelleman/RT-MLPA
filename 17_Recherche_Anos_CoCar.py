@@ -26,11 +26,6 @@ my_parser.add_argument('-P','--probes',type=str,
 my_parser.add_argument('-I','--input',type=str,
                        help='/path/to/count directory')
 
-my_parser.add_argument('-v',
-                       '--verbose',
-                       action='store_true',
-                       help='an optional argument')
-
 args = my_parser.parse_args()
 #run = '2021_04_14_CoCar1'
 #run = '2021_06_04_CoCar2'

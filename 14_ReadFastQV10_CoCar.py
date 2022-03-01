@@ -17,11 +17,6 @@ my_parser.add_argument('-O','--output',type=str,
 my_parser.add_argument('-I','--input',type=str,
                        help='/path/to/fastq files')
 
-my_parser.add_argument('-v',
-                       '--verbose',
-                       action='store_true',
-                       help='an optional argument')
-
 args = my_parser.parse_args()
 
 run = args.runName
