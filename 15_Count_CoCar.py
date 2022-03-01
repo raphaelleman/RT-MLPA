@@ -142,7 +142,7 @@ for sp in Sample:
         # Sauvegarde
         os.chdir(repG + os.path.sep + 'Aligns')
         namfile = str(sp) + '_Align_UnFiltred_' + Analysis + '.csv'
-        SeqT.to_csv(namfile, sep = ';', index = False)
+        #SeqT.to_csv(namfile, sep = ';', index = False)
 
         # Filtres : barcodes non ok et pb sondes
         SeqT_Filtred = SeqT[SeqT['Left'] != '_']
