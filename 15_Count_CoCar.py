@@ -33,92 +33,93 @@ def Count(list):
 
 
 def count_analysis(sample, directory, reads_dir, probes_dir):
-    CoCar_Genes = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
-    repS = directory + os.path.sep + sample
-    if not os.path.exists(repS):
-        os.mkdir(repS)
+    #genes_list = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
+    genes_list = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D']
+    sample_dir = directory + os.path.sep + sample
+    if not os.path.exists(sample_dir):
+        os.mkdir(sample_dir)
 
-    Bilan = []
+    report = []
     print(sample)
     Reads_Ok_Precent = 0
-    # Lecture du fichier reads
+    #Read file
     os.chdir(reads_dir)
-    namfile = str(sample) + '_Reads.csv'
-    SeqT = pd.read_csv(namfile, sep=';' , encoding='latin-1', header = None)
+    filename = str(sample) + '_Reads.csv'
+    SeqT = pd.read_csv(filename, sep=';' , encoding='latin-1', header = None)
 
     #SeqT = SeqT[0:500000]
 
     SeqT.columns = ['Seq']
     nb = len(SeqT)
-    Bilan.append(namfile)
-    Bilan.append('Reads_Totaux_FastQ')
-    Bilan.append(nb)
+    report.append(filename)
+    report.append('Reads_Totaux_FastQ')
+    report.append(nb)
 
-    # Extraction UMI
+    #Extract UMI
     SeqT['UMI'] = SeqT['Seq'].str[2:9]
 
-    # recherche des sondes et barcodes
+    #Search probes and barcodes
     SeqT['Left'] = '_'
     SeqT['Right'] = '_'
 
-    for Analysis in CoCar_Genes:
-        repG = repS + os.path.sep + Analysis
-        if not os.path.exists(repG):
-            os.mkdir(repG)
-            os.mkdir(repG + os.path.sep + 'Aligns')
-            os.mkdir(repG + os.path.sep + 'Counts')
-            os.mkdir(repG + os.path.sep + 'Figures')
-            os.mkdir(repG + os.path.sep + 'Figures/Matrices')
-        Bilan.append(Analysis)
+    for gene in genes_list:
+        gene_dir = sample_dir + os.path.sep + gene
+        if not os.path.exists(gene_dir):
+            os.mkdir(gene_dir)
+            os.mkdir(gene_dir + os.path.sep + 'Aligns')
+            os.mkdir(gene_dir + os.path.sep + 'Counts')
+            os.mkdir(gene_dir + os.path.sep + 'Figures')
+            os.mkdir(gene_dir + os.path.sep + 'Figures/Matrices')
+        report.append(gene)
         print(str(len(SeqT)) + ' Total Reads')
-        print(Analysis)
+        print(gene)
         SeqT['Seq2'] = '_'
         SeqT['tmp'] = SeqT['Seq'].str[9:19]
 
-        ## Chargement et tri des sondes (D/G)
+        ##Load and sort probes (L/R)
         os.chdir(probes_dir)
-        probes = Analysis + '_Probes.csv'
-        sondes = pd.read_csv(probes, sep=';' , encoding='latin-1')
-        sondes.index = sondes['Sonde']
-        sondes['DG'] = '_'
-        sondes['10bp'] = '_'
-        sondes['S'] = '0'
-        for i in range(0,len(sondes)):
-            sondes['DG'][i] = (sondes['Sonde'][i])[len(sondes['Sonde'][i])-1]
-            sondes['10bp'][i] = (sondes['Seq'][i])[0:10]
-            sondes['S'][i] = len(sondes['Seq'][i])
-        sondesG = sondes[sondes['DG'] == 'G']
-        sondesD = sondes[sondes['DG'] == 'D']
+        probe_name = gene + '_Probes.csv'
+        probes = pd.read_csv(probe_name, sep=';' , encoding='latin-1')
+        probes.index = probes['Sonde']
+        probes['DG'] = '_'
+        probes['10bp'] = '_'
+        probes['S'] = '0'
+        for i in range(0,len(probes)):
+            probes['DG'][i] = (probes['Sonde'][i])[len(probes['Sonde'][i])-1]
+            probes['10bp'][i] = (probes['Seq'][i])[0:10]
+            probes['S'][i] = len(probes['Seq'][i])
+        left_probes = probes[probes['DG'] == 'G']
+        right_probes = probes[probes['DG'] == 'D']
 
-        ## Alignement des sondes _ sauvegarde des fichiers d'alignement
-        # Alignement _____________________________________________
-        for sd in sondesG['Sonde']:
-            sd = sd.replace(' ','')
-            seq = str(sondesG['10bp'][sd])
-            SeqT['Left'][SeqT['tmp'] == seq] = sd
-            L1 = sondesG['S'][sd]
-            SeqT['Seq2'][SeqT['Left'] == sd] = SeqT['Seq'].str[L1:]
+        ## Align probes _ save alignment file
+        # Align _____________________________________________
+        for lp in left_probes['Sonde']:
+            lp = lp.replace(' ','')
+            seq = str(left_probes['10bp'][lp])
+            SeqT['Left'][SeqT['tmp'] == seq] = lp
+            L1 = left_probes['S'][lp]
+            SeqT['Seq2'][SeqT['Left'] == lp] = SeqT['Seq'].str[L1:]
         print('Left Probes ok')
-        Bilan.append('Left_ok')
-        Bilan.append(len(SeqT[SeqT['Left'] != '_']))
+        report.append('Left_ok')
+        report.append(len(SeqT[SeqT['Left'] != '_']))
 
         SeqT['tmp'] = SeqT['Seq2'].str[9:19]
-        for sd in sondesD['Sonde']:
-            sd = sd.replace(' ','')
-            seq = str(sondesD['10bp'][sd])
-            SeqT['Right'][SeqT['tmp'] == seq] = sd
-            L2 = sondesD['S'][sd] + 28
+        for rp in right_probes['Sonde']:
+            rp = rp.replace(' ','')
+            seq = str(right_probes['10bp'][rp])
+            SeqT['Right'][SeqT['tmp'] == seq] = rp
+            L2 = right_probes['S'][rp] + 28
         print('Right Probes ok')
-        Bilan.append('Right_ok')
-        Bilan.append(len(SeqT[SeqT['Right'] != '_']))
+        report.append('Right_ok')
+        report.append(len(SeqT[SeqT['Right'] != '_']))
 
         del SeqT['tmp']
         del SeqT['Seq2']
 
-        # Sauvegarde
-        os.chdir(repG + os.path.sep + 'Aligns')
-        namfile = str(sample) + '_Align_UnFiltred_' + Analysis + '.csv'
-        #SeqT.to_csv(namfile, sep = ';', index = False)
+        # Save
+        os.chdir(gene_dir + os.path.sep + 'Aligns')
+        filename = str(sample) + '_Align_UnFiltred_' + gene + '.csv'
+        #SeqT.to_csv(filename, sep = ';', index = False)
 
         # Filtres : barcodes non ok et pb sondes
         SeqT_Filtred = SeqT[SeqT['Left'] != '_']
@@ -132,21 +133,21 @@ def count_analysis(sample, directory, reads_dir, probes_dir):
 
         print(str(len(SeqT_Filtred)) + ' Reads Ok   ' + str(round(Reads_Ok_Precent,1)) + ' %')
 
-        #retirer les reads identifiés
+        #Remove identified reads
         SeqT = SeqT[SeqT['Left'] == '_']
 
-        # Sauvegarde
-        namfile = str(sample) + '_Align_Left_Only' + Analysis + '.csv'
-        #SeqT_Left.to_csv(namfile, sep = ';', index = False)
+        #Save
+        filename = str(sample) + '_Align_Left_Only' + gene + '.csv'
+        #SeqT_Left.to_csv(filename, sep = ';', index = False)
 
-        namfile = str(sample) + '_Align_' + Analysis + '.csv'
-        SeqT_Filtred.to_csv(namfile, sep = ';', index = False)
+        filename = str(sample) + '_Align_' + gene + '.csv'
+        SeqT_Filtred.to_csv(filename, sep = ';', index = False)
 
-    # Comptage _______________________________________________
-        # Chargement du fichier
-        os.chdir(repG + os.path.sep + 'Aligns')
-        namfile = str(sample) + '_Align_' + Analysis + '.csv'
-        #SeqT_Filtred = pd.read_csv(namfile, sep=';' , encoding='latin-1')
+    #Count _______________________________________________
+        #Load file
+        os.chdir(gene_dir + os.path.sep + 'Aligns')
+        filename = str(sample) + '_Align_' + gene + '.csv'
+        #SeqT_Filtred = pd.read_csv(filename, sep=';' , encoding='latin-1')
         del SeqT_Filtred['Seq']
 
         # Fusion des champs
@@ -164,7 +165,7 @@ def count_analysis(sample, directory, reads_dir, probes_dir):
 
         if Probes.empty == False :
             Probes.columns = ['Fusion', 'Count_Full']
-                # Comptage UMI
+                #Count UMI
             FusUMI = SeqT_Filtred['FusUMI'].tolist()
             UMI = pd.DataFrame(list(Count(FusUMI).items()))
             UMI.columns = ['Fusion', 'Count_UMI']
@@ -175,7 +176,7 @@ def count_analysis(sample, directory, reads_dir, probes_dir):
             cptUMI = pd.DataFrame(list(Count(UMIcpt).items()))
             cptUMI.columns = ['Fusion', 'Count_UMI']
 
-                # Comptage UMI corrige : premier quartile 0.25 (TBOne = 0.20)
+                #Count corrected UMI : first quartile 0.25 (TBOne = 0.20)
             quant = np.quantile(UMI['Count_UMI'],0.25)
             UMIcorr = UMI[UMI['Count_UMI'] >= quant]
             UMIcorr=UMIcorr.reset_index(drop = True)
@@ -183,7 +184,7 @@ def count_analysis(sample, directory, reads_dir, probes_dir):
             cptUMIcorr = pd.DataFrame(list(Count(UMIcorrcpt).items()))
             cptUMIcorr.columns = ['Fusion', 'Count_UMI_Adj']
 
-                # Construction tableau de comptage
+                #Create count table
             Probes=Probes.reset_index(drop = True)
             Probes.index = Probes['Fusion']
             fusion = Probes['Fusion'].tolist()
@@ -204,7 +205,7 @@ def count_analysis(sample, directory, reads_dir, probes_dir):
                     val = (val.tolist())[0]
                     Probes['Adj_UMI'][fus] = val
 
-            # Agglomerer les sondes degenerees
+            #Agglomerate degenerates probes
             for probes_2 in Probes.index:
                 if '_2' in probes_2:
                     probes_3 = probes_2.replace('_2','')
@@ -217,17 +218,17 @@ def count_analysis(sample, directory, reads_dir, probes_dir):
                     if probes_2 in Probes.index:
                         Probes = Probes.drop(index = probes_2)
 
-            namfile = str(sample) + '_Counts_' + Analysis + '.csv'
-            os.chdir(repG + os.path.sep + 'Counts')
-            Probes.to_csv(namfile, sep = ';')
+            filename = str(sample) + '_Counts_' + gene + '.csv'
+            os.chdir(gene_dir + os.path.sep + 'Counts')
+            Probes.to_csv(filename, sep = ';')
             print('stop')
 
-    os.chdir(repS)
-    namfile = str(sample) + '_UnAligned.csv'
-    #SeqT.to_csv(namfile, sep = ';', index = False)
-    bilan = pd.DataFrame(Bilan)
-    namfile = str(sample) + '_info.csv'
-    bilan.to_csv(namfile, sep = ';', index = False)
+    os.chdir(sample_dir)
+    filename = str(sample) + '_UnAligned.csv'
+    #SeqT.to_csv(filename, sep = ';', index = False)
+    report = pd.DataFrame(report)
+    filename = str(sample) + '_info.csv'
+    report.to_csv(filename, sep = ';', index = False)
 
 
 
@@ -252,7 +253,7 @@ def main():
     #launch analysis
     Parallel(n_jobs= threads_number, verbose = 1)(delayed(count_analysis)(sample, directory, reads_dir, probes_dir) for sample in sample_list)
 
-    print("--- Program executed in {:2f} minutes ---".format(float(time.time() - start_time) / 60))
+    print("--- Program executed in {:2f} minutes ---".format(float(float(time.time() - start_time) / 60)))
 
 
 
