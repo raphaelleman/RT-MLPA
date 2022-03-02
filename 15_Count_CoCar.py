@@ -6,53 +6,13 @@ import numpy as np
 import pandas as pd
 import time
 import argparse
+from joblib import Parallel, delayed
 pd.set_option('mode.chained_assignment', None)
 
-#run = '2021_04_14_CoCar1'
-#run = '2021_06_04_CoCar2'
-#run = '2021_09_15_CoCar3'
-my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
-
-my_parser.add_argument('-R','--runName',type=str,
-                       help='Name of run')
-
-my_parser.add_argument('-O','--output',type=str,
-                       help='/path/to/output')
-
-my_parser.add_argument('-P','--probes',type=str,
-                       help='/path/to/probes ref')
-
-my_parser.add_argument('-I','--input',type=str,
-                       help='/path/to/XXXX_Reads.csv files')
-
-args = my_parser.parse_args()
-
-run = args.runName
-
-rep = os.path.realpath(args.output)
-repProbes = os.path.realpath(args.probes)
-rep = rep+ os.path.sep + run
-if not os.path.exists(rep):
-    os.mkdir(rep)
-
-### Listes Reads et Echantillons
-ListReads = []
-repReads = os.path.realpath(args.input)
-
-for file in os.listdir(repReads):
-    ListReads.append(file)
-Sample = []
-for Reads in ListReads:
-    spl = Reads[0:4]
-    Sample.append(spl)
-
-#CoCar_Genes = ['APC','AXIN2','BMPR1A','BUB1','EPCAM','FAN1','GALNT12','GREM1','MLH1','MSH2','MSH3','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','RNF43','RPS20','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','RAD51D','BRCA']
-#CoCar_Genes = ['APC','BMPR1A','EPCAM','MLH1','MSH2','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','RAD51D','BRCA1','BRCA2']
-
-CoCar_Genes = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D']
 
 ##### Analyse
-for sp in Sample:
+def analyse(sp, rep, repReads, repProbes):
+    CoCar_Genes = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
     repS = rep + os.path.sep + sp
     if not os.path.exists(repS):
         os.mkdir(repS)
@@ -254,3 +214,58 @@ for sp in Sample:
     bilan = pd.DataFrame(Bilan)
     namfile = str(sp) + '_info.csv'
     bilan.to_csv(namfile, sep = ';', index = False)
+
+
+def main():
+    start_time = time.time()
+
+    #run = '2021_04_14_CoCar1'
+    #run = '2021_06_04_CoCar2'
+    #run = '2021_09_15_CoCar3'
+    my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
+
+    my_parser.add_argument('-R','--runName',type=str,
+                        help='Name of run')
+
+    my_parser.add_argument('-O','--output',type=str,
+                        help='/path/to/output')
+
+    my_parser.add_argument('-P','--probes',type=str,
+                        help='/path/to/probes ref')
+
+    my_parser.add_argument('-I','--input',type=str,
+                        help='/path/to/XXXX_Reads.csv files')
+
+    args = my_parser.parse_args()
+
+    run = args.runName
+
+    rep = os.path.realpath(args.output)
+    repProbes = os.path.realpath(args.probes)
+    rep = rep+ os.path.sep + run
+    if not os.path.exists(rep):
+        os.mkdir(rep)
+
+    ### Listes Reads et Echantillons
+    ListReads = []
+    repReads = os.path.realpath(args.input)
+
+    for file in os.listdir(repReads):
+        ListReads.append(file)
+    Sample = []
+    for Reads in ListReads:
+        spl = Reads[0:4]
+        Sample.append(spl)
+
+    #CoCar_Genes = ['APC','AXIN2','BMPR1A','BUB1','EPCAM','FAN1','GALNT12','GREM1','MLH1','MSH2','MSH3','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','RNF43','RPS20','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','RAD51D','BRCA']
+    #CoCar_Genes = ['APC','BMPR1A','EPCAM','MLH1','MSH2','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','RAD51D','BRCA1','BRCA2']
+
+    Parallel(n_jobs= 40, verbose = 3)(delayed(analyse)(sp, rep, repReads, repProbes) for sp in Sample)
+
+    print("--- Program executed in {} minutes ---".format(float(time.time() - start_time) / 60))
+
+
+
+if __name__ == "__main__":
+    main()
+
