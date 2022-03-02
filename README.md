@@ -11,18 +11,10 @@ cd ./RT-MLPA_analysis
 
 ## Python packages
 
-- os
-- shutil
-- csv
-- math
-- numpy
 - pandas
-- time
-- statistics
-- argparse
 - matplotlib
 - sklearn
-- gzip
+- joblib
 
 ## 14_ReadFastQV10_CoCar.py
 
