@@ -1,28 +1,49 @@
 import os
-import shutil
 import csv
 import math
+import time
+import shutil
+import argparse
 import numpy as np
 import pandas as pd
-import time
-import argparse
 from joblib import Parallel, delayed
 pd.set_option('mode.chained_assignment', None)
 
 
-##### Analyse
-def analyse(sp, rep, repReads, repProbes):
+def get_arguments():
+    parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
+    parser.add_argument('-R', '--runName', dest='runName', type=str,
+                        help='Name of run')
+    parser.add_argument('-O', '--output', dest='output', type=str,
+                        help='/path/to/output')
+    parser.add_argument('-P', '--probes', dest='probes', type=str,
+                        help='/path/to/probes ref')
+    parser.add_argument('-I', '--input', dest='input', type=str,
+                        help='/path/to/XXXX_Reads.csv files')
+    parser.add_argument('-T', '--threads', dest='threads', type=str, default=os.cpu_count(),
+                        help='number of threads to use for paralleling (default maximum cpu threads)')
+    return parser.parse_args()    
+
+
+def Count(list):
+    count = {}.fromkeys(set(list),0)
+    for i in list:
+        count[i] += 1
+    return count
+
+
+def count_analysis(sample, directory, reads_dir, probes_dir):
     CoCar_Genes = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
-    repS = rep + os.path.sep + sp
+    repS = directory + os.path.sep + sample
     if not os.path.exists(repS):
         os.mkdir(repS)
 
     Bilan = []
-    print(sp)
+    print(sample)
     Reads_Ok_Precent = 0
     # Lecture du fichier reads
-    os.chdir(repReads)
-    namfile = str(sp) + '_Reads.csv'
+    os.chdir(reads_dir)
+    namfile = str(sample) + '_Reads.csv'
     SeqT = pd.read_csv(namfile, sep=';' , encoding='latin-1', header = None)
 
     #SeqT = SeqT[0:500000]
@@ -55,7 +76,7 @@ def analyse(sp, rep, repReads, repProbes):
         SeqT['tmp'] = SeqT['Seq'].str[9:19]
 
         ## Chargement et tri des sondes (D/G)
-        os.chdir(repProbes)
+        os.chdir(probes_dir)
         probes = Analysis + '_Probes.csv'
         sondes = pd.read_csv(probes, sep=';' , encoding='latin-1')
         sondes.index = sondes['Sonde']
@@ -96,7 +117,7 @@ def analyse(sp, rep, repReads, repProbes):
 
         # Sauvegarde
         os.chdir(repG + os.path.sep + 'Aligns')
-        namfile = str(sp) + '_Align_UnFiltred_' + Analysis + '.csv'
+        namfile = str(sample) + '_Align_UnFiltred_' + Analysis + '.csv'
         #SeqT.to_csv(namfile, sep = ';', index = False)
 
         # Filtres : barcodes non ok et pb sondes
@@ -115,16 +136,16 @@ def analyse(sp, rep, repReads, repProbes):
         SeqT = SeqT[SeqT['Left'] == '_']
 
         # Sauvegarde
-        namfile = str(sp) + '_Align_Left_Only' + Analysis + '.csv'
+        namfile = str(sample) + '_Align_Left_Only' + Analysis + '.csv'
         #SeqT_Left.to_csv(namfile, sep = ';', index = False)
 
-        namfile = str(sp) + '_Align_' + Analysis + '.csv'
+        namfile = str(sample) + '_Align_' + Analysis + '.csv'
         SeqT_Filtred.to_csv(namfile, sep = ';', index = False)
 
     # Comptage _______________________________________________
         # Chargement du fichier
         os.chdir(repG + os.path.sep + 'Aligns')
-        namfile = str(sp) + '_Align_' + Analysis + '.csv'
+        namfile = str(sample) + '_Align_' + Analysis + '.csv'
         #SeqT_Filtred = pd.read_csv(namfile, sep=';' , encoding='latin-1')
         del SeqT_Filtred['Seq']
 
@@ -136,13 +157,6 @@ def analyse(sp, rep, repReads, repProbes):
         del SeqT_Filtred['UMI']
         del SeqT_Filtred['Left']
         del SeqT_Filtred['Right']
-
-        # Comptages
-        def Count(liste):
-            compte = {}.fromkeys(set(liste),0)
-            for valeur in liste:
-                compte[valeur] += 1
-            return compte
 
             # Comptage Full
         FusProbes = SeqT_Filtred['FusProbes'].tolist()
@@ -203,69 +217,44 @@ def analyse(sp, rep, repReads, repProbes):
                     if probes_2 in Probes.index:
                         Probes = Probes.drop(index = probes_2)
 
-            namfile = str(sp) + '_Counts_' + Analysis + '.csv'
+            namfile = str(sample) + '_Counts_' + Analysis + '.csv'
             os.chdir(repG + os.path.sep + 'Counts')
             Probes.to_csv(namfile, sep = ';')
             print('stop')
 
     os.chdir(repS)
-    namfile = str(sp) + '_UnAligned.csv'
+    namfile = str(sample) + '_UnAligned.csv'
     #SeqT.to_csv(namfile, sep = ';', index = False)
     bilan = pd.DataFrame(Bilan)
-    namfile = str(sp) + '_info.csv'
+    namfile = str(sample) + '_info.csv'
     bilan.to_csv(namfile, sep = ';', index = False)
+
 
 
 def main():
     start_time = time.time()
 
-    #run = '2021_04_14_CoCar1'
-    #run = '2021_06_04_CoCar2'
-    #run = '2021_09_15_CoCar3'
-    my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
+    #get arguments
+    args = get_arguments()
+    directory = os.path.realpath(args.output) + os.path.sep + args.runName
+    probes_dir = os.path.realpath(args.probes)
+    reads_dir = os.path.realpath(args.input)
+    threads_number = args.threads
+    
+    #create directory if it not exists
+    if not os.path.exists(directory):
+        os.mkdir(directory)
 
-    my_parser.add_argument('-R','--runName',type=str,
-                        help='Name of run')
+    #get sample list
+    reads_list = [dir for dir in os.listdir(reads_dir)]
+    sample_list = [read.split("_")[0] for read in reads_list]
 
-    my_parser.add_argument('-O','--output',type=str,
-                        help='/path/to/output')
+    #launch analysis
+    Parallel(n_jobs= threads_number, verbose = 1)(delayed(count_analysis)(sample, directory, reads_dir, probes_dir) for sample in sample_list)
 
-    my_parser.add_argument('-P','--probes',type=str,
-                        help='/path/to/probes ref')
-
-    my_parser.add_argument('-I','--input',type=str,
-                        help='/path/to/XXXX_Reads.csv files')
-
-    args = my_parser.parse_args()
-
-    run = args.runName
-
-    rep = os.path.realpath(args.output)
-    repProbes = os.path.realpath(args.probes)
-    rep = rep+ os.path.sep + run
-    if not os.path.exists(rep):
-        os.mkdir(rep)
-
-    ### Listes Reads et Echantillons
-    ListReads = []
-    repReads = os.path.realpath(args.input)
-
-    for file in os.listdir(repReads):
-        ListReads.append(file)
-    Sample = []
-    for Reads in ListReads:
-        spl = Reads[0:4]
-        Sample.append(spl)
-
-    #CoCar_Genes = ['APC','AXIN2','BMPR1A','BUB1','EPCAM','FAN1','GALNT12','GREM1','MLH1','MSH2','MSH3','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','RNF43','RPS20','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','RAD51D','BRCA']
-    #CoCar_Genes = ['APC','BMPR1A','EPCAM','MLH1','MSH2','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','RAD51D','BRCA1','BRCA2']
-
-    Parallel(n_jobs= 40, verbose = 3)(delayed(analyse)(sp, rep, repReads, repProbes) for sp in Sample)
-
-    print("--- Program executed in {} minutes ---".format(float(time.time() - start_time) / 60))
+    print("--- Program executed in {:2f} minutes ---".format(float(time.time() - start_time) / 60))
 
 
 
 if __name__ == "__main__":
     main()
-
