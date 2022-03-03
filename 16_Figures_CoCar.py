@@ -1,8 +1,7 @@
 import os
-import statistics
-import shutil
-import csv
-import math
+from re import S
+import time
+import argparse
 import numpy as np
 import pandas as pd
 import matplotlib
@@ -10,84 +9,55 @@ from matplotlib import pyplot
 from matplotlib import patches
 from matplotlib import transforms
 from matplotlib.patches import Rectangle
-from sklearn.preprocessing import StandardScaler
-from sklearn.preprocessing import MinMaxScaler
-import argparse
+from joblib import Parallel, delayed
 pd.set_option('mode.chained_assignment', None)
 
-#run = '2021_04_14_CoCar1'
-#run = '2021_06_04_CoCar2'
-#run = '2021_09_15_CoCar3'
-my_parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
 
-my_parser.add_argument('-P','--probes',type=str,
-                       help='/path/to/probes ref')
+def get_arguments():
+    parser = argparse.ArgumentParser(fromfile_prefix_chars='@')
+    parser.add_argument('-P', '--probes', dest='probes', type=str,
+                        help='/path/to/probes ref')
+    parser.add_argument('-I', '--input', dest='input', type=str,
+                        help='/path/to/count directory')
+    parser.add_argument('-T', '--threads', dest='threads', type=str, default=os.cpu_count(),
+                        help='number of threads to use for paralleling (default maximum cpu threads)')
+    return parser.parse_args()  
 
-my_parser.add_argument('-I','--input',type=str,
-                       help='/path/to/count directory')
 
-args = my_parser.parse_args()
+def draw_figure(sample, genes_list, counts_dir, probes_dir):
+    print(sample)
+    for genes in genes_list:
+        print(genes)
+        ## Splice matrix generation
+        # Probes loading
+        os.chdir(probes_dir)
+        probe_name = genes + '_Probes.csv'
+        probes = pd.read_csv(probe_name, sep=';' , encoding='latin-1')
 
-#### Defnition Analyses
-Analysis = 'BRCA'
-#AnalysisSp = 'BRCA1'
+        probes['DG'] = '_'
+        probes['10bp'] = '_'
+        probes['S'] = '0'
+        for i in probes.index:
+            probes['DG'][i] = (probes['Sonde'][i])[len(probes['Sonde'][i])-1]
+            probes['10bp'][i] = (probes['Seq'][i])[0:10]
+            probes['S'][i] = len(probes['Seq'][i])
 
-#run = '2021_04_14_CoCar1'
-#run = '2021_06_04_CoCar2'
-#run = '2021_09_15_CoCar3'
-#run = '2021_09_27_CoCar4'
-#run = 'Ok_Cocar'
-repProbes = os.path.realpath(args.probes)
+        left_probes = probes[probes['DG'] == 'G']
+        right_probes = probes[probes['DG'] == 'D']
+        left_probes = left_probes.reset_index(drop = True)
+        right_probes = right_probes.reset_index(drop = True)
 
-### Listes FastQ et Echantillons
-repCount = os.path.realpath(args.input)
-Sample = []
-
-for file in os.listdir(repCount):
-    if file[0:7] != 'Matrice' and file[0:3] != 'Ano':
-        Sample.append(file)
-
-#CoCar_Genes = ['APC','AXIN2','BMPR1A','BUB1','EPCAM','FAN1','GALNT12','GREM1','MLH1','MSH2','MSH3','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','RNF43','RPS20','SMAD4','STK11','TP53']
-#CoCar_Genes = ['APC','AXIN2','BMPR1A','BUB1','EPCAM','FAN1','GALNT12','MLH1','MSH2','MSH3','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','RNF43','RPS20','SMAD4','STK11','TP53']
-#CoCar_Genes = ['APC','BMPR1A','EPCAM','MLH1','MSH2','MSH6','MUTYH','NTHL1','PMS2','POLD1','POLE','PTEN','SMAD4','STK11','TP53','CDH1','PALB2','RAD51C','BRCA1','BRCA2','RAD51D']
-
-CoCar_Genes = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D']
-
-##### Analyse
-for sp in Sample:
-    print(sp)
-    for Analysis in CoCar_Genes:
-        print(Analysis)
-        ## Generation des Matrices de splice
-        # Chargement des sondes
-        os.chdir(repProbes)
-        probes = Analysis + '_Probes.csv'
-        sondes = pd.read_csv(probes, sep=';' , encoding='latin-1')
-
-        sondes['DG'] = '_'
-        sondes['10bp'] = '_'
-        sondes['S'] = '0'
-        for i in sondes.index:
-            sondes['DG'][i] = (sondes['Sonde'][i])[len(sondes['Sonde'][i])-1]
-            sondes['10bp'][i] = (sondes['Seq'][i])[0:10]
-            sondes['S'][i] = len(sondes['Seq'][i])
-
-        sondesG = sondes[sondes['DG'] == 'G']
-        sondesD = sondes[sondes['DG'] == 'D']
-        sondesG = sondesG.reset_index(drop = True)
-        sondesD = sondesD.reset_index(drop = True)
-
-        os.chdir(repCount + os.path.sep + sp + os.path.sep +  Analysis + os.path.sep + 'Counts')
-        # Generation de la Matrice
+        os.chdir(counts_dir + os.path.sep + sample + os.path.sep +  genes + os.path.sep + 'Counts')
+        # Matrix generation
         countFile = os.listdir(os.getcwd())
-        splices = pd.DataFrame(columns = sondesD['Sonde'], index = sondesG['Sonde'])
+        splices = pd.DataFrame(columns = right_probes['Sonde'], index = left_probes['Sonde'])
         if len(countFile) != 0:
             for file in os.listdir(os.getcwd()):
-                os.chdir(repCount + os.path.sep + sp + os.path.sep +  Analysis + os.path.sep + 'Counts')
+                os.chdir(counts_dir + os.path.sep + sample + os.path.sep +  genes + os.path.sep + 'Counts')
                 Counts = pd.read_csv(file, sep=';' , encoding='latin-1')
 
-                for x in sondesD['Sonde']:
-                    for y in sondesG['Sonde']:
+                for x in right_probes['Sonde']:
+                    for y in left_probes['Sonde']:
                         for i in range(0,len(Counts)):
                             if (x in Counts['Fusion'][i]) == True and (y in Counts['Fusion'][i]) == True:
                 # Correction par UMI.... ou pas?
@@ -95,19 +65,19 @@ for sp in Sample:
                 #splices = splices.fillna(0)
                                 splices[x][y] = Counts['Count_Full'][i]
                 splices = splices.fillna(0)
-                # Sauvegarde
-                os.chdir(repCount+ os.path.sep + sp + os.path.sep +  Analysis + os.path.sep + 'Figures/Matrices')
+                # Save
+                os.chdir(counts_dir+ os.path.sep + sample + os.path.sep +  genes + os.path.sep + 'Figures/Matrices')
                 splices.to_csv(file, sep = ';', header = True)
 
         else:
-            for x in sondesD['Sonde']:
-                for y in sondesG['Sonde']:
+            for x in right_probes['Sonde']:
+                for y in left_probes['Sonde']:
                     splices[x][y] = 0
         ### Figures
-        os.chdir(repProbes)
-        gene = pd.read_csv(Analysis + '_Design.csv', sep=';' , encoding='latin-1')
+        os.chdir(probes_dir)
+        gene = pd.read_csv(genes + '_Design.csv', sep=';' , encoding='latin-1')
 
-        # Graphe _ mise echelle automatique fonction fichier design
+        # Graph _ mise echelle automatique fonction fichier design
         figure = pyplot.figure()
         axes = figure.add_subplot(111)
 
@@ -126,7 +96,7 @@ for sp in Sample:
         axes.xaxis.set_visible(False)
         axes.yaxis.set_visible(False)
 
-        # Graphique Structure des Genes
+        # Gene structure graph
         for i in range(1, gene.shape[1]):
             Num = str(gene.iloc[0,i])
             Type = gene.iloc[1,i]
@@ -150,11 +120,11 @@ for sp in Sample:
             if Num != '0'and len(Num) > 3:
                 axes.text(XPos+Size/2,Ypos - Cor, Num, rotation = 90, fontsize = Fz)
 
-        # Graphique Splices
+        # Splices graphs
         spliceval = np.array(splices.loc[:,list(splices)[1]:])
         lower = np.min(spliceval)
         higher = np.max(spliceval) * 1.1
-        if higher==0:
+        if higher == 0:
             higher = 1
         for droite in splices.columns:
                 for gauche in splices.index:
@@ -196,20 +166,48 @@ for sp in Sample:
                                 axes.add_artist(matplotlib.lines.Line2D((start, start+(stop-start)/2), (YposStart-2, high), color = 'red',linewidth = ep))
                                 axes.add_artist(matplotlib.lines.Line2D((start+(stop-start)/2, stop), (high, YposStop-2), color = 'red',linewidth = ep))
 
-        TotReads = sum(Counts['Count_Full'])
-        if sp != '#Moy':
-            TotUMI = sum(Counts['Adj_UMI'])
-            if TotUMI != 0:
-                AmpF = round(TotReads/TotUMI*10)/10
+        total_reads = sum(Counts['Count_Full'])
+        if sample != '#Moy':
+            total_UMI = sum(Counts['Adj_UMI'])
+            if total_UMI != 0:
+                AmpF = round(total_reads/total_UMI*10)/10
             else:
                 AmpF = 0
-            TotReads = sp + '  ' + Analysis + '     Nbr Reads : ' + str(TotReads) + '  Nbr Lig : ' + str(TotUMI) + '   Ampli : ' + str(AmpF)
+            total_reads = sample + '  ' + genes + '     Nbr Reads : ' + str(total_reads) + '  Nbr Lig : ' + str(total_UMI) + '   Ampli : ' + str(AmpF)
         else:
-            TotReads = sp + '  ' + Analysis + '     Nbr Reads : ' + str(TotReads)
-        axes.text(50, 1,TotReads, fontsize = 8)
+            total_reads = sample + '  ' + genes + '     Nbr Reads : ' + str(total_reads)
+        axes.text(50, 1,total_reads, fontsize = 8)
 
-        nomfichier =  sp + '_' + '_Fig_CFull_' + Analysis + '.png'
-        os.chdir(repCount + os.path.sep + sp + os.path.sep +  Analysis + os.path.sep + 'Figures')
-        figure.savefig(nomfichier, bbox_inches = 'tight', dpi = 400)
+        filename =  sample + '_' + '_Fig_CFull_' + genes + '.png'
+        os.chdir(counts_dir + os.path.sep + sample + os.path.sep +  genes + os.path.sep + 'Figures')
+        figure.savefig(filename, bbox_inches = 'tight', dpi = 400)
         pyplot.close('all')
         figure.clear('all')
+
+
+
+def main():
+    start_time = time.time()
+
+    #get arguments
+    args = get_arguments()
+    probes_dir = os.path.realpath(args.probes)
+    counts_dir = os.path.realpath(args.input)
+    threads_number = args.threads
+    
+    #get sample list
+    samples_list = [file for file in os.listdir(counts_dir)]
+
+    #define list of genes 
+    #genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
+    genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D']
+
+    #launch analysis
+    Parallel(n_jobs= threads_number, verbose = 1)(delayed(draw_figure)(sample, genes_list, counts_dir, probes_dir) for sample in samples_list)
+
+    print(f"--- Program executed in {float(time.time() - start_time) / 60} minutes ---")
+
+
+
+if __name__ == "__main__":
+    main()

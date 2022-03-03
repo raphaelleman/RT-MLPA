@@ -1,8 +1,6 @@
 import os
-import csv
-import math
 import time
-import shutil
+import glob
 import argparse
 import numpy as np
 import pandas as pd
@@ -32,9 +30,7 @@ def Count(list):
     return count
 
 
-def count_analysis(sample, directory, reads_dir, probes_dir):
-    #genes_list = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
-    genes_list = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D']
+def count_analysis(sample, genes_list, directory, reads_dir, probes_dir):
     sample_dir = directory + os.path.sep + sample
     if not os.path.exists(sample_dir):
         os.mkdir(sample_dir)
@@ -247,13 +243,18 @@ def main():
         os.mkdir(directory)
 
     #get sample list
-    reads_list = [dir for dir in os.listdir(reads_dir)]
-    sample_list = [read.split("_")[0] for read in reads_list]
+    os.chdir(reads_dir)
+    reads_list = glob.glob("*.csv")
+    samples_list = [read.split("_")[0] for read in reads_list]
+    
+    #define list of genes
+    #genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
+    genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D']
 
     #launch analysis
-    Parallel(n_jobs= threads_number, verbose = 1)(delayed(count_analysis)(sample, directory, reads_dir, probes_dir) for sample in sample_list)
+    Parallel(n_jobs= threads_number, verbose = 1)(delayed(count_analysis)(sample, genes_list, directory, reads_dir, probes_dir) for sample in samples_list)
 
-    print("--- Program executed in {:2f} minutes ---".format(float(float(time.time() - start_time) / 60)))
+    print(f"--- Program executed in {float(time.time() - start_time) / 60} minutes ---")
 
 
 
