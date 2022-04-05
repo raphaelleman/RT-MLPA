@@ -78,6 +78,7 @@ def draw_figure(sample, genes_list, counts_dir, probes_dir):
         gene = pd.read_csv(genes + '_Design.csv', sep=';' , encoding='latin-1')
 
         # Graph _ mise echelle automatique fonction fichier design
+        print("graph")
         figure = pyplot.figure()
         axes = figure.add_subplot(111)
 
@@ -196,14 +197,18 @@ def main():
     threads_number = args.threads
     
     #get sample list
-    samples_list = [file for file in os.listdir(counts_dir)]
+    #samples_list = [file for file in os.listdir(counts_dir)]
+    samples_list = ["#Moy"]
 
     #define list of genes 
     #genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
     genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D']
 
     #launch analysis
-    Parallel(n_jobs= threads_number, verbose = 1)(delayed(draw_figure)(sample, genes_list, counts_dir, probes_dir) for sample in samples_list)
+    #Parallel(n_jobs= threads_number, verbose = 1)(delayed(draw_figure)(sample, genes_list, counts_dir, probes_dir) for sample in samples_list)
+
+    for sample in samples_list:
+        draw_figure(sample, genes_list, counts_dir, probes_dir)
 
     print(f"--- Program executed in {float(time.time() - start_time) / 60} minutes ---")
 

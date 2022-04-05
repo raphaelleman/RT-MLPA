@@ -47,7 +47,7 @@ plotPath = NULL
 
 while (i < length(args)){
     if(args[i]=="-I"|args[i]=="--input"){
-        pathCount=args[i+1];i = i+2
+        pathCount=normalizePath(args[i+1]);i = i+2
     }else if(args[i]=="-O"|args[i]=="--output"){
         pathOutput=args[i+1];i = i+2
     }else if(args[i]=="-s"|args[i]=="--nSamp"){
@@ -362,6 +362,7 @@ for (i in 1:nIter){
     # Model Fitting
     result <- apply(data,2,fit.gamma.negbinomial,negbinom.n=negbinom.n)
     result <- as.data.frame(t(result))
+
     names(result) = c("model","Param1","Param2","mean","sd")
     if(is.null(mergedResult)){
         mergedResult = result
@@ -371,6 +372,7 @@ for (i in 1:nIter){
         mergedResult = mergedResult[,-1]
     }
 }
+
 message("   Finish Cross validation.")
 CrossResult <- as.data.frame(t(apply(mergedResult,1,getCrossValResult)))
 row.names(CrossResult) = row.names(mergedResult)
