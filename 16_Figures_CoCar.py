@@ -21,6 +21,8 @@ def get_arguments():
                         help='/path/to/count directory')
     parser.add_argument('-T', '--threads', dest='threads', type=str, default=os.cpu_count(),
                         help='number of threads to use for paralleling (default maximum cpu threads)')
+    parser.add_argument('-G', '--genes_file', dest='gene_file', type=str,
+                        help='/path/to/genes file')
     return parser.parse_args()  
 
 
@@ -194,21 +196,21 @@ def main():
     args = get_arguments()
     probes_dir = os.path.realpath(args.probes)
     counts_dir = os.path.realpath(args.input)
+    gene_file = os.path.realpath(args.gene_file)
     threads_number = args.threads
     
     #get sample list
-    #samples_list = [file for file in os.listdir(counts_dir)]
-    samples_list = ["#Moy"]
+    samples_list = [file for file in os.listdir(counts_dir)]
 
-    #define list of genes 
-    #genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
-    genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D']
+    # get gene list from file
+    genes_list = []
+    with open(gene_file, "r") as file:
+        for line in file:
+            genes_list.append(line.strip())
+    print(genes_list)
 
     #launch analysis
-    #Parallel(n_jobs= threads_number, verbose = 1)(delayed(draw_figure)(sample, genes_list, counts_dir, probes_dir) for sample in samples_list)
-
-    for sample in samples_list:
-        draw_figure(sample, genes_list, counts_dir, probes_dir)
+    Parallel(n_jobs= threads_number, verbose = 1)(delayed(draw_figure)(sample, genes_list, counts_dir, probes_dir) for sample in samples_list)
 
     print(f"--- Program executed in {float(time.time() - start_time) / 60} minutes ---")
 

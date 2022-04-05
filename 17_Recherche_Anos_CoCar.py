@@ -18,6 +18,8 @@ def get_arguments():
                         help='/path/to/probes ref')
     parser.add_argument('-I', '--input', dest='input', type=str,
                         help='/path/to/count directory')
+    parser.add_argument('-G', '--genes_file', dest='gene_file', type=str,
+                        help='/path/to/genes file')
     parser.add_argument('-T', '--threads', dest='threads', type=str, default=os.cpu_count(),
                         help='number of threads to use for paralleling (default maximum cpu threads)')
     return parser.parse_args()  
@@ -362,11 +364,15 @@ def main():
     directory = os.path.realpath(args.output) + os.path.sep + run_name
     probes_dir = os.path.realpath(args.probes)
     counts_dir = os.path.realpath(args.input)
+    gene_file = os.path.realpath(args.gene_file)
     threads_number = args.threads
 
-    #define list of genes
-    #genes_list = ['BRCA1','BRCA2','PALB2','RAD51C','RAD51D','PTEN','CDH1','TP53','MLH1','MSH2','MSH6','EPCAM','PMS2']
-    genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D']
+     # get gene list from file
+    genes_list = []
+    with open(gene_file, "r") as file:
+        for line in file:
+            genes_list.append(line.strip())
+    print(genes_list)
 
     #create directories
     if not os.path.exists(directory):

@@ -18,6 +18,8 @@ def get_arguments():
                         help='/path/to/probes ref')
     parser.add_argument('-I', '--input', dest='input', type=str,
                         help='/path/to/XXXX_Reads.csv files')
+    parser.add_argument('-G', '--genes_file', dest='gene_file', type=str,
+                        help='/path/to/genes file')
     parser.add_argument('-T', '--threads', dest='threads', type=str, default=os.cpu_count(),
                         help='number of threads to use for paralleling (default maximum cpu threads)')
     return parser.parse_args()    
@@ -237,6 +239,7 @@ def main():
     probes_dir = os.path.realpath(args.probes)
     reads_dir = os.path.realpath(args.input)
     threads_number = args.threads
+    gene_file = os.path.realpath(args.gene_file)
     
     #create directory if it not exists
     if not os.path.exists(directory):
@@ -247,9 +250,13 @@ def main():
     reads_list = glob.glob("*.csv")
     samples_list = [read.split("_")[0] for read in reads_list]
     
-    #define list of genes
-    #genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D', 'TP53', 'PTEN', 'CDH1', 'MSH2', 'MSH6', 'MLH1', 'PMS2', 'EPCAM']
-    genes_list = ['BRCA1', 'BRCA2', 'PALB2', 'RAD51C', 'RAD51D']
+    # get gene list from file
+    genes_list = []
+    with open(gene_file, "r") as file:
+        for line in file:
+            genes_list.append(line.strip())
+    print(genes_list)
+    
 
     #launch analysis
     Parallel(n_jobs= threads_number, verbose = 1)(delayed(count_analysis)(sample, genes_list, directory, reads_dir, probes_dir) for sample in samples_list)
