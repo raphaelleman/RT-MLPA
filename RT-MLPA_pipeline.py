@@ -23,7 +23,7 @@ def get_arguments():
                         help='/path/to/fastq files')
     parser.add_argument('-O', '--output', dest='output', type=str,
                         help='/path/to/output')
-    parser.add_argument('-P', '--probes', dest='probes', type=str, default="RT-MLPA_scripts/Probes_Design", 
+    parser.add_argument('-P', '--probes', dest='probes', type=str, default="/mnt/recherche/RT-MLPA/RT-MLPA_scripts/Probes_Design", 
                         help='/path/to/probes ref')
     parser.add_argument('-G', '--genes_file', dest='gene_file', type=str,
                         help='/path/to/genes file')
