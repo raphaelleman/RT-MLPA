@@ -1,30 +1,79 @@
-# RT-MLPA scripts
+# RT-MLPA pipeline
 
-## Install
+## Install:
 
-Donwload scrpits
+Donwload scripts:
 
 ```bash
 git clone https://github.com/raphaelleman/RT-MLPA.git
-cd ./RT-MLPA_analysis
+cd ./RT-MLPA
 ```
 
-## Python packages
-
+## Python packages:
+Works with Python version 3.8.10 and use these following packages:
 - pandas
 - matplotlib
 - sklearn
 - joblib
+- tqdm
+- contextlib
 
-## 14_ReadFastQV10_CoCar.py
+## **Pipeline:**
+The pipeline will launch every following steps explained after (ReadFastQ, Count_CoCar, Figures_CoCar, Recherche_Anos_Cocar and statistics test w/ CrossValAnalyser) from fastq file. 
 
-Extract sequence from Fastq FastQ Filtres
-
-```bash
-python 14_ReadFastQV10_CoCar.py -R mySequence -O /path/to/output -I /path/to/fastq
+Fastq file were generated using bcl2fastq tool with the following command:
+``` 
+singularity exec /mnt/remote_references/containers/bcl2fastq/bcl2fastq_2020-06-12_07-58-43.simg bcl2fastq --runfolder-dir /mnt/tampon/NextSeqOutput/220420_NS500765_0834_AHLK7GBGXL/ --output-dir /mnt/recherche/RNA-seq/RT-MLPA_analysis/Run_Avril/FASTQ/ --sample-sheet /mnt/recherche/RNA-seq/RT-MLPA_analysis/Run_Avril/SampleSheet_run_avril.csv --no-lane-splitting 
 ```
 
-## 15_Count_CoCar.py
+Exemple of use:
+```
+$ python3 RT-MLPA_pipeline.py \
+    
+    -I RT-MLPA_analysis/Run_Avril/FASTQ/ \
+    -O RT-MLPA_analysis/Run_Avril/ \
+    -P RT-MLPA_scripts/Probes_Design/ \
+    -G RT-MLPA_scripts/list_genes.txt \
+    -R model \
+    -T 40 \
+    -it 20
+```
+
+### Options:
+
+``` -I ``` : /path/to/fastq files (expect one fastq (one file) per sample ie *--no-lane-splitting option in bcl2fastq*)
+
+``` -O ``` : /path/to/output directory
+
+``` -P ``` : /path/to/probes design
+
+``` -G ``` : /path/to/gene file list in txt format
+
+``` -R ``` : /path/to/runmode (default: align,count,figure,stat,model)
+
+Possible modes:
+- **align**: run ReadFastQV10_CoCar.py and put results in /outdir/mySequence
+- **count**: run Count_CoCar.py and put results in /outdir/myCount
+- **figure**: run Figures_CoCar.py and put results in /outdir/myCount/*sample*/*gene*/Figures
+- **stat**: run Recherche_Anos_CoCar.py and put results in /outdir/myAnalysis
+- **model**: run CrossValAnalyzer.r and put results in /outdir/myStatAnalysis_nbiter
+
+``` -T ``` : number of threads to use for paralleling (default maximum cpu threads)
+
+``` -it ``` : /number of iteration to perform CrossValAnalyser.r (default: 10)
+
+
+
+## Subscripts used
+### **ReadFastQV10_CoCar.py**
+
+Extract sequence from Fastq file
+
+```bash
+python ReadFastQV10_CoCar.py -R mySequence -O /path/to/output -I /path/to/fastq
+```
+
+### **Count_CoCar.py**
 
 Count fusion from sequence, need the list of probes
 
@@ -32,7 +81,7 @@ Count fusion from sequence, need the list of probes
 python 15_Count_CoCar.py -R myCount -O /path/to/output -I /path/to/mySequence -P /path/to/Probes -G /path/to/gene_list
 ```
 
-## 16_Figures_CoCar.py
+### **Figures_CoCar.py**
 
 Create matrices and Figures from count file, need design of probes files
 
@@ -40,7 +89,7 @@ Create matrices and Figures from count file, need design of probes files
 python 16_Figures_CoCar.py -I /path/to/myCount -P /path/to/Probes -G /path/to/gene_list
 ```
 
-## 17_Recherche_Anos_CoCar.py
+### **Recherche_Anos_CoCar.py**
 
 Get final analysis of fusion count
 
@@ -48,11 +97,11 @@ Get final analysis of fusion count
 python 17_Recherche_Anos_CoCar.py -R myAnalysis -O /path/to/output -I /path/to/myCount -P /path/to/Probes -G /path/to/gene_list
 ```
 
-## Statistics analyses
+### **Statistics analyses**
 
 Under development part to compute p-value of abnormal expression
 
-### Input
+#### Input
 
 The scripts expect to have *.count file in the following format.
 ```bash
@@ -63,9 +112,9 @@ BRCA1E12G-BRCA1E3D;1;1;1
 
 Only the Adj_UMI count will be used in following analyses.
 
-### Two step analysis
+#### Two step analysis
 
-If you have control samples you can perfome analysis in two step.
+If you have control samples you can perfom analysis in two step.
 First, it is the model trainning step from control samples.
 
 ```bash
@@ -78,7 +127,7 @@ Second, the trained model is used to analyze career samples.
 Rscript ./appTrainedModel.r -I /path/to/mySamples/ -m path/to/myModel.RData -O /path/to/myOutput.txt
 ```
 
-### One step analysis
+#### One step analysis
 
 If you have not enougth control samples, used the cross-validation in one step analysis
 
@@ -86,7 +135,7 @@ If you have not enougth control samples, used the cross-validation in one step a
 Rscript ./CrossValAnalyzer.r -I /path/to/mySamples/ -O /path/to/myOutput.txt
 ```
 
-#### Option for One step analysis
+##### Option for One step analysis
 
 **-s, --nSamp** Integer
 * Number of ramdom samples used to perform cross validation [Default=10]
